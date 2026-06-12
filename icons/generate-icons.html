@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<!-- Abra este arquivo no Chrome, clique em "Gerar Ícones" e salve os PNGs -->
+<html>
+<head><title>Gerar Ícones xDownloader</title></head>
+<body style="font-family:sans-serif;padding:20px;background:#0f1419;color:#fff">
+  <h2>Gerador de Ícones - xDownloader</h2>
+  <button onclick="generate()" style="padding:10px 20px;background:#1d9bf0;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px">
+    Gerar e Baixar Ícones
+  </button>
+  <div id="previews" style="display:flex;gap:20px;margin-top:20px;align-items:flex-end"></div>
+
+  <script>
+    function drawIcon(size) {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      // Background
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.arc(size/2, size/2, size/2, 0, Math.PI*2);
+      ctx.fill();
+
+      // Icon color
+      ctx.fillStyle = '#1d9bf0';
+      const s = size / 24;
+
+      // Arrow shaft
+      ctx.fillRect(10*s, 3*s, 4*s, 9*s);
+
+      // Arrow head (triangle)
+      ctx.beginPath();
+      ctx.moveTo(6*s, 11*s);
+      ctx.lineTo(12*s, 17*s);
+      ctx.lineTo(18*s, 11*s);
+      ctx.closePath();
+      ctx.fill();
+
+      // Bottom bar
+      ctx.fillRect(4*s, 18.5*s, 16*s, 2.5*s);
+
+      return canvas;
+    }
+
+    function generate() {
+      const sizes = [16, 48, 128];
+      const previews = document.getElementById('previews');
+      previews.innerHTML = '';
+
+      sizes.forEach(size => {
+        const canvas = drawIcon(size);
+
+        // Preview
+        const wrapper = document.createElement('div');
+        wrapper.style.textAlign = 'center';
+        const label = document.createElement('div');
+        label.textContent = `${size}x${size}`;
+        label.style.marginBottom = '6px';
+        label.style.fontSize = '12px';
+        wrapper.appendChild(label);
+        wrapper.appendChild(canvas);
+        previews.appendChild(wrapper);
+
+        // Download
+        const link = document.createElement('a');
+        link.download = `icon${size}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      });
+    }
+  </script>
+</body>
+</html>

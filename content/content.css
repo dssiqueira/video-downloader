@@ -1,0 +1,46 @@
+/* Video Downloader - Injected styles */
+
+.vdl-download-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  color: rgb(113, 118, 123);
+  transition: background-color 0.2s ease, color 0.2s ease;
+  margin-left: 4px;
+}
+
+.vdl-download-btn:hover {
+  background-color: rgba(29, 155, 240, 0.1);
+  color: rgb(29, 155, 240);
+}
+
+.vdl-download-btn svg {
+  display: block;
+}
+
+#vdl-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 20, 25, 0.92);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  z-index: 2147483647;
+  pointer-events: none;
+  white-space: nowrap;
+  animation: vdl-fadein 0.25s ease;
+}
+
+@keyframes vdl-fadein {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
