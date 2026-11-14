@@ -107,24 +107,33 @@ function renderVideoList(videos, container, username = null) {
     const metaParts = [bitrateLabel, sizeLabel].filter(Boolean);
     const metaLine  = metaParts.join(" · ");
 
+    // Static markup only; values that come from the page/API are set as text
+    // or dataset below, never interpolated into HTML.
     li.innerHTML = `
       <div class="quality-info">
         <div class="quality-top">
           ${platformIcon}
-          <span class="quality-badge">${qualityLabel}${isHighest ? " ⭐" : ""}</span>
+          <span class="quality-badge"></span>
         </div>
-        ${metaLine ? `<span class="quality-meta">${metaLine}</span>` : ""}
+        <span class="quality-meta"></span>
       </div>
-      <button class="btn-download"
-        data-url="${video.url}"
-        data-filename="${filename}"
-        aria-label="Baixar ${qualityLabel}">
+      <button class="btn-download">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
           <path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 4h14v-2H5v2z"/>
         </svg>
         Baixar
       </button>
     `;
+
+    li.querySelector(".quality-badge").textContent = `${qualityLabel}${isHighest ? " ⭐" : ""}`;
+    const meta = li.querySelector(".quality-meta");
+    if (metaLine) meta.textContent = metaLine;
+    else meta.remove();
+
+    const btn = li.querySelector(".btn-download");
+    btn.dataset.url      = video.url;
+    btn.dataset.filename = filename;
+    btn.setAttribute("aria-label", `Baixar ${qualityLabel}`);
 
     container.appendChild(li);
   });

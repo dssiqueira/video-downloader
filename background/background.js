@@ -11,7 +11,26 @@ function ensureMp4(filename) {
   return filename.replace(/\.[^/.]+$/, "") + ".mp4";
 }
 
+// Only download over HTTPS from the platforms' own video CDNs.
+const ALLOWED_VIDEO_HOSTS = ["twimg.com", "cdninstagram.com", "fbcdn.net"];
+
+function isAllowedVideoUrl(url) {
+  try {
+    const { protocol, hostname } = new URL(url);
+    return (
+      protocol === "https:" &&
+      ALLOWED_VIDEO_HOSTS.some((h) => hostname === h || hostname.endsWith(`.${h}`))
+    );
+  } catch {
+    return false;
+  }
+}
+
 function downloadDirect(url, filename, sendResponse) {
+  if (!isAllowedVideoUrl(url)) {
+    sendResponse({ success: false, error: "URL de vídeo não permitida." });
+    return;
+  }
   chrome.downloads.download(
     { url, filename: ensureMp4(filename), saveAs: false, conflictAction: "uniquify" },
     (downloadId) => {
