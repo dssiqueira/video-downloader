@@ -62,6 +62,18 @@ IG_PAGE = """<!doctype html><html><body>
   xhr.open('POST', '/graphql/query');
   xhr.onload = () => { window.pageChecks.xhrOk = xhr.status === 200; };
   xhr.send('doc_id=1');
+  // Later, while "navigating": Instagram inserts new JSON blocks into the page,
+  // one complete and one created empty and filled afterwards.
+  setTimeout(() => {
+    const late = document.createElement('script');
+    late.type = 'application/json';
+    late.textContent = __LATE__;
+    document.body.appendChild(late);
+    const empty = document.createElement('script');
+    empty.type = 'application/json';
+    document.body.appendChild(empty);
+    setTimeout(() => { empty.textContent = __FILLED__; }, 400);
+  }, 600);
 </script>
 </body></html>"""
 
@@ -92,7 +104,13 @@ async def route_all(context):
         elif "/graphql/query" in url:
             await route.fulfill(status=200, content_type="text/javascript", body=fx("ig_ndjson.txt"))
         else:
-            await route.fulfill(status=200, content_type="text/html", body=IG_PAGE.replace("__SSR__", fx("ig_graphql_carousel.json")))
+            filled = json.dumps({"require": [["ScheduledServerJS", "handle", None, [{"__bbox": {"result": {"data": {"xdt_api__v1__media__shortcode__web_info": {"items": [
+                {"code": "FilledLater1", "pk": "31", "user": {"username": "late"},
+                 "video_versions": [{"width": 720, "height": 1280, "url": "https://scontent.cdninstagram.com/late.mp4?x=1"}]}]}}}}}]]]})
+            body = (IG_PAGE.replace("__SSR__", fx("ig_graphql_carousel.json"))
+                    .replace("__LATE__", json.dumps(fx("ig_legacy_shortcode.json")))
+                    .replace("__FILLED__", json.dumps(filled)))
+            await route.fulfill(status=200, content_type="text/html", body=body)
 
     async def media(route):
         await route.fulfill(status=200, headers={"content-type": "video/mp4", "content-length": "2097152"}, body=b"\0" * 2097152)
@@ -198,13 +216,15 @@ async def main(chrome, shots):
         ig = await context.new_page()
         ig.on("pageerror", lambda e: errors.append(f"ig page: {e}"))
         await ig.goto("https://www.instagram.com/reel/C1aBcDeFgHi/")
-        await ig.wait_for_timeout(1500)
+        await ig.wait_for_timeout(2500)
         checks = await ig.evaluate("window.pageChecks")
         check("IG page fetch/XHR still work", checks.get("fetchOk") is True and checks.get("xhrOk") is True, checks)
         ig_tab = await sw.evaluate("async () => (await chrome.tabs.query({url: 'https://www.instagram.com/*'}))[0].id")
         videos = await sw.evaluate(f"async () => Object.values((await chrome.storage.session.get('tab:{ig_tab}'))['tab:{ig_tab}'] || {{}})")
         posts = sorted(v["postId"] for v in videos)
-        check("captured IG: SSR JSON + fetch + NDJSON XHR", posts == ["C1aBcDeFgHi", "CarouSel_01", "ReelOne_001", "ReelTwo_002"], posts)
+        check("captured IG: SSR JSON + fetch + NDJSON XHR", {"C1aBcDeFgHi", "CarouSel_01", "ReelOne_001", "ReelTwo_002"} <= set(posts), posts)
+        check("captured IG: JSON blocks inserted later (complete and filled afterwards)", {"B0LdLegacy1", "FilledLater1"} <= set(posts), posts)
+        check("captured IG: nothing unexpected", len(posts) == 6, posts)
 
         popup = await popup_for(context, ext_id, ig_tab)
         popup.on("pageerror", lambda e: errors.append(f"popup ig: {e}"))
