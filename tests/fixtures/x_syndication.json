@@ -1,0 +1,39 @@
+{
+ "__typename": "Tweet",
+ "id_str": "1850000000000000500",
+ "user": {
+  "screen_name": "embed"
+ },
+ "text": "...",
+ "mediaDetails": [
+  {
+   "type": "video",
+   "media_url_https": "https://pbs.twimg.com/amplify_video_thumb/1850000000000000501/img/t.jpg",
+   "expanded_url": "https://twitter.com/embed/status/1850000000000000500/video/1",
+   "id_str": "1850000000000000501",
+   "video_info": {
+    "duration_millis": 8000,
+    "variants": [
+     {
+      "content_type": "video/mp4",
+      "url": "https://video.twimg.com/amplify_video/1850000000000000501/vid/avc1/1920x1080/hd.mp4",
+      "bitrate": 10368000
+     },
+     {
+      "content_type": "video/mp4",
+      "url": "https://video.twimg.com/amplify_video/1850000000000000501/vid/avc1/640x360/sd.mp4",
+      "bitrate": 832000
+     }
+    ]
+   }
+  }
+ ],
+ "video": {
+  "variants": [
+   {
+    "type": "video/mp4",
+    "src": "https://video.twimg.com/amplify_video/1850000000000000501/vid/avc1/640x360/sd.mp4"
+   }
+  ]
+ }
+}

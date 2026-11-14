@@ -17,40 +17,27 @@
 
 ## ✨ O que faz
 
-- **X / Twitter** — detecta vídeos enquanto você navega, injeta botão de download direto na timeline e permite buscar por URL do post
-- **Instagram** — captura vídeos de Reels, Posts e Stories enquanto são reproduzidos
-- Exibe **múltiplas qualidades** disponíveis (1080p, 720p, 480p, 360p...)
-- Mostra **tamanho do arquivo** antes de baixar
-- Interface limpa que reconhece automaticamente em qual plataforma você está
-- Zero dependências externas — nenhum dado sai do seu navegador
-
----
-
-## 🖥️ Screenshots
-
-| Popup no X/Twitter | Popup no Instagram |
-|---|---|
-| Badge do X, busca por URL, qualidades disponíveis | Badge do Instagram, vídeos detectados na página |
+- **X / Twitter**: botão ↓ na barra de ações de cada tweet com vídeo (inclusive quote tweets e retweets) e lista no popup
+- **Instagram**: Reels, Posts (inclusive carrossel) e Stories, assim que a página carrega o post
+- Mostra **todas as qualidades** (1080p, 720p, 480p…) com resolução, bitrate e **tamanho do arquivo**
+- Contador no ícone da extensão com quantos vídeos a aba já carregou
+- **Nenhum serviço externo**: a extensão não faz requisições a APIs de terceiros e nenhum dado sai do seu navegador
 
 ---
 
 ## 🚀 Instalação
 
-> A extensão ainda não está publicada na Chrome Web Store. Instale em modo desenvolvedor:
+> A extensão ainda não está publicada na Chrome Web Store. Instale em modo desenvolvedor (Chrome 111+):
 
-**1.** Clone ou baixe este repositório
+1. Clone ou baixe este repositório
 
-```bash
-git clone https://github.com/seu-usuario/video-downloader.git
-```
+   ```bash
+   git clone https://github.com/dssiqueira/video-downloader.git
+   ```
 
-**2.** Abra o Chrome e acesse `chrome://extensions`
-
-**3.** Ative o **Modo do desenvolvedor** (toggle no canto superior direito)
-
-**4.** Clique em **"Carregar sem compactação"** e selecione a pasta do projeto
-
-**5.** O ícone da extensão aparecerá na barra do Chrome — pronto ✓
+2. Abra `chrome://extensions` e ative o **Modo do desenvolvedor**
+3. Clique em **Carregar sem compactação** e selecione a pasta do projeto
+4. Recarregue as abas do X e do Instagram que já estavam abertas
 
 ---
 
@@ -58,116 +45,100 @@ git clone https://github.com/seu-usuario/video-downloader.git
 
 ### X / Twitter
 
-Duas formas de baixar:
-
-**Via botão na timeline**
-1. Navegue pelo X.com normalmente
-2. Um botão ↓ aparece na barra de ações de cada tweet com vídeo
-3. Clique para iniciar o download diretamente
-
-**Via popup (todas as qualidades)**
-1. Clique no ícone da extensão
-2. Cole a URL do post com vídeo
-3. Clique em **Buscar**
-4. Escolha a qualidade e clique em **Baixar**
+- **No tweet**: clique no botão ↓ da barra de ações. Ele baixa a melhor qualidade.
+- **No popup**: abra um tweet (ou role a timeline) e clique no ícone da extensão. O vídeo do tweet aberto aparece em *Este post*, com todas as qualidades; os outros vídeos que a página carregou aparecem abaixo.
 
 ### Instagram
 
-1. Navegue até o Reel, Post ou Story com vídeo
-2. **Reproduza o vídeo** (necessário para o browser carregar a URL)
-3. Clique no ícone da extensão
-4. O vídeo aparecerá automaticamente em *Vídeos detectados nesta página*
-5. Clique em **Baixar**
+Abra o post, reel ou story e clique no ícone da extensão. O vídeo aparece em *Este post*; escolha a qualidade e clique em **Baixar**.
 
-> **Dica:** Se o vídeo não aparecer, clique no botão ↺ (atualizar) no popup após reproduzir.
+> Se nada aparecer, recarregue a página: a extensão só enxerga o que a página carregou depois que ela foi instalada.
 
 ---
 
-## 🏗️ Arquitetura
+## ⚙️ Como funciona
+
+O X e o Instagram carregam os posts pelas próprias APIs (GraphQL e REST), e essas respostas JSON já trazem os links MP4 de todas as qualidades. A extensão lê uma cópia dessas respostas, sem alterar nada nem fazer requisições próprias.
+
+```
+página (x.com / instagram.com)
+  └─ content/hook.js        world MAIN, document_start
+       envolve fetch() e XMLHttpRequest; copia as respostas da API que mencionam vídeo
+       │ window.postMessage
+       ▼
+  └─ content/bridge.js      mundo isolado da extensão
+       lib/extract.js acha os vídeos no JSON (e no JSON embutido no HTML do Instagram)
+       │ chrome.runtime.sendMessage
+       ▼
+background/background.js    service worker
+       lista por aba (memória + chrome.storage.session), contador no ícone,
+       tamanho dos arquivos (HEAD) e downloads
+       ▲
+       ├─ popup/               lista os vídeos da aba, post aberto primeiro
+       └─ content/x-buttons.js botão ↓ nos tweets, busca pelo ID do tweet
+```
+
+Detalhes que importam:
+
+- O `hook.js` precisa rodar no mundo da página (`"world": "MAIN"`) e em `document_start`. Um content script comum roda num mundo isolado e não enxerga o `fetch` da página, que era o motivo de a versão 2 quase nunca achar vídeos no Instagram.
+- No X, cada vídeo é associado ao tweet dono dele e também aos tweets que o mostram (quote tweet, retweet), então o botão funciona em todos.
+- Só são aceitos links `https` dos CDNs das plataformas (`video.twimg.com`, `*.cdninstagram.com`, `*.fbcdn.net`), conferidos pelo hostname em três lugares: na extração, no service worker e antes de cada download.
+- A lista de cada aba recomeça quando a página é recarregada (os links do Instagram expiram).
 
 ```
 video-downloader/
-│
-├── manifest.json                  # Manifest V3 — permissões e scripts
-│
-├── background/
-│   └── background.js              # Service Worker
-│                                  # · Cache de vídeos por aba
-│                                  # · Fetch da API do X (syndication + fxtwitter)
-│                                  # · Gerencia chrome.downloads
-│
+├── manifest.json
+├── lib/extract.js          # extração de vídeos (funções puras, testadas)
 ├── content/
-│   ├── content.css                # Estilos injetados (botão ↓, toast)
-│   └── platforms/
-│       ├── twitter.js             # Intercepta XHR/Fetch do X, injeta botão na timeline
-│       └── instagram.js           # Lê window.__additionalData, intercepta API GraphQL,
-│                                  # observa <video> src via MutationObserver + play event
-│
-├── popup/
-│   ├── popup.html / .css / .js    # Interface principal da extensão
-│   └── about.html / .css          # Página "Sobre" com plataformas suportadas
-│
-└── icons/
-    ├── icon16/48/128.png          # Ícones da extensão
-    └── apps/
-        ├── twitter.png            # Logo X/Twitter
-        └── social.png             # Logo Instagram
+│   ├── hook.js             # mundo da página: copia respostas da API
+│   ├── bridge.js           # mundo isolado: extrai e envia ao service worker
+│   ├── x-buttons.js        # botão ↓ nos tweets
+│   └── content.css
+├── background/background.js
+├── popup/                  # popup e página "Sobre"
+├── icons/
+└── tests/
+    ├── extract.test.js     # node --test
+    ├── fixtures/           # respostas de API de exemplo (X e Instagram)
+    └── e2e/run_e2e.py      # Chrome real + páginas simuladas do X e do Instagram
 ```
 
 ---
 
-## ⚙️ Como funciona por dentro
+## 🧪 Testes
 
-### X / Twitter
+```bash
+node --test tests/*.test.js                  # extração (sem dependências)
 
-O content script sobrescreve `window.fetch` e `XMLHttpRequest.prototype.open` para interceptar todas as requisições de rede feitas pela página. Quando detecta uma URL do CDN `video.twimg.com` ou uma resposta da API `TweetDetail`, extrai as variantes de vídeo com bitrate e resolução.
+pip install playwright && python -m playwright install chromium
+python tests/e2e/run_e2e.py                  # extensão carregada no Chromium
+```
 
-Para busca por URL, o background service worker chama a **API de sindicalização pública** do Twitter (`cdn.syndication.twimg.com`) — sem autenticação — e faz fallback para a API `fxtwitter.com` se necessário.
+O teste de ponta a ponta abre páginas falsas de `x.com` e `instagram.com` (respondidas localmente a partir de `tests/fixtures`), e confere a captura via `fetch` e XHR, o botão nos tweets, o popup, os downloads e que a página continua funcionando com o hook. Ele roda no CI a cada pull request.
 
-### Instagram
-
-Usa três camadas de detecção em paralelo:
-
-| Camada | O que faz |
-|---|---|
-| `window.__additionalData` | Lê dados SSR injetados pelo Instagram no HTML da página, incluindo `video_url` e `video_versions[]` |
-| Interceptação de API | Monitora respostas de `/graphql/query` e `/api/v1/` que contêm `video_url` no JSON |
-| MutationObserver + `play` event | Captura `currentSrc` do `<video>` quando o usuário aperta play — fallback mais confiável |
+As fixtures seguem o formato das respostas reais, mas X e Instagram mudam suas APIs sem aviso. Se um vídeo parar de aparecer, salve a resposta da API (DevTools → Network) em `tests/fixtures`, escreva um teste e ajuste `lib/extract.js`.
 
 ---
 
-## 🔒 Permissões utilizadas
+## 🔒 Permissões
 
 | Permissão | Motivo |
 |---|---|
-| `activeTab` | Ler a URL da aba ativa para identificar a plataforma |
-| `scripting` | Injetar content scripts nas páginas |
-| `downloads` | Iniciar downloads via `chrome.downloads.download()` |
-| `storage` | Reservado para configurações futuras |
-| `tabs` | Consultar informações da aba atual no popup |
-
-Nenhuma permissão de rede desnecessária. Os `host_permissions` cobrem apenas os domínios das plataformas suportadas e seus CDNs.
+| `downloads` | Baixar o arquivo escolhido |
+| `storage` | Guardar a lista de vídeos de cada aba enquanto ela está aberta (`storage.session`, apagada ao fechar) |
+| `x.com`, `twitter.com`, `www.instagram.com` | Rodar os scripts nessas páginas e saber qual post está aberto |
+| `video.twimg.com`, `*.cdninstagram.com`, `*.fbcdn.net` | Consultar o tamanho dos arquivos e baixá-los |
 
 ---
 
 ## ⚠️ Limitações
 
-- **Contas privadas** — vídeos de perfis privados não podem ser acessados
-- **Instagram Stories expirados** — URLs de mídia têm validade curta
-- **YouTube** — não suportado; a plataforma usa proteção DRM/DASH que não pode ser contornada sem APIs externas
-- A detecção no Instagram requer que o vídeo seja reproduzido na sessão atual
-
----
-
-## 🛠️ Tecnologias
-
-- **Manifest V3** — padrão atual das extensões Chrome
-- **Chrome Extensions API** — `downloads`, `tabs`, `scripting`, `storage`
-- **Vanilla JS** — sem frameworks, sem bundler, sem dependências
-- **CSS puro** — tema escuro inspirado no X.com
+- Só aparecem vídeos que a própria página carregou: sem acesso ao post (conta privada, restrição de idade), a extensão também não tem.
+- Links do Instagram expiram depois de algumas horas; recarregue a página se um download falhar.
+- YouTube, TikTok e outras redes não são suportados.
 
 ---
 
 ## 📄 Licença
 
-Uso pessoal. Baixe apenas conteúdo que você tem permissão para usar e respeite os termos de serviço de cada plataforma.
+[MIT](LICENSE). Baixe apenas conteúdo que você tem permissão para usar e respeite os termos de serviço de cada plataforma.

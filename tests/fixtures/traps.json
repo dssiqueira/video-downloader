@@ -1,0 +1,22 @@
+{
+ "errors": [
+  {
+   "code": 88,
+   "message": "Rate limit"
+  }
+ ],
+ "card": {
+  "code": "ABCDEFG",
+  "video_url": "https://video.twimg.com/amplify_video/1/vid/x.mp4"
+ },
+ "item": {
+  "code": "Cxyz12345",
+  "video_versions": [
+   {
+    "width": 720,
+    "height": 1280,
+    "url": "https://video.twimg.com/not-ig.mp4"
+   }
+  ]
+ }
+}

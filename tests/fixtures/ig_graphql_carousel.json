@@ -1,0 +1,50 @@
+{
+ "data": {
+  "xdt_api__v1__media__shortcode__web_info": {
+   "items": [
+    {
+     "code": "CarouSel_01",
+     "pk": "1",
+     "media_type": 8,
+     "user": {
+      "username": "travel"
+     },
+     "carousel_media": [
+      {
+       "pk": "11",
+       "media_type": 1,
+       "image_versions2": {
+        "candidates": [
+         {
+          "url": "https://scontent.cdninstagram.com/p1.jpg"
+         }
+        ]
+       }
+      },
+      {
+       "pk": "12",
+       "media_type": 2,
+       "image_versions2": {
+        "candidates": [
+         {
+          "url": "https://scontent.cdninstagram.com/v12.jpg"
+         }
+        ]
+       },
+       "video_versions": [
+        {
+         "width": 1080,
+         "height": 1350,
+         "url": "https://instagram.fgru5-1.fna.fbcdn.net/o1/v/t16/f2/m69/car12.mp4?oh=1"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "extensions": {
+  "is_final": true
+ }
+}

@@ -33,48 +33,34 @@
     <!-- Platform badge (shown when on a supported site) -->
     <div id="platform-badge" class="platform-badge hidden"></div>
 
-    <!-- URL Input (shown for Twitter or when no platform detected) -->
-    <div id="url-section" class="url-section">
-      <label class="label" for="tweet-url">URL do post com vídeo</label>
-      <div class="input-row">
-        <input
-          type="text"
-          id="tweet-url"
-          class="input"
-          placeholder="https://x.com/user/status/..."
-          aria-label="URL do post"
-        />
-        <button id="btn-fetch" class="btn-primary">Buscar</button>
-      </div>
-    </div>
-
     <!-- Status -->
-    <div id="status" class="status hidden" role="alert" aria-live="polite"></div>
+    <div id="status" class="status hidden" role="status" aria-live="polite"></div>
 
-    <!-- Fetched video list (from URL input) -->
-    <div id="video-list" class="video-list hidden">
-      <div class="section-title">Qualidades disponíveis</div>
-      <ul id="quality-list" class="quality-list"></ul>
-    </div>
+    <!-- Video of the post open in the tab -->
+    <section id="current-section" class="page-section hidden">
+      <div class="section-title">Este post</div>
+      <ul id="current-list" class="video-cards"></ul>
+    </section>
 
-    <!-- Videos detected on current page -->
-    <div id="page-videos-section" class="page-section hidden">
+    <!-- Other videos captured in this tab -->
+    <section id="others-section" class="page-section hidden">
       <div class="section-title">
-        Vídeos detectados nesta página
+        <span id="others-title">Vídeos nesta aba</span>
         <button id="btn-clear" class="text-btn" title="Limpar lista">Limpar</button>
       </div>
-      <ul id="page-video-list" class="quality-list"></ul>
-    </div>
+      <ul id="others-list" class="video-cards"></ul>
+    </section>
 
     <!-- Empty state -->
-    <div id="empty-state" class="empty-state">
+    <div id="empty-state" class="empty-state hidden">
       <svg viewBox="0 0 24 24" width="36" height="36" fill="#444" aria-hidden="true">
         <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
       </svg>
-      <p id="empty-hint">Cole a URL de um post com vídeo<br/>ou navegue por um site suportado</p>
+      <p id="empty-hint"></p>
     </div>
   </div>
 
+  <script src="../lib/extract.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

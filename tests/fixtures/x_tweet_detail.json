@@ -1,0 +1,297 @@
+{
+ "data": {
+  "threaded_conversation_with_injections_v2": {
+   "instructions": [
+    {
+     "type": "TimelineAddEntries",
+     "entries": [
+      {
+       "entryId": "tweet-1850000000000000001",
+       "content": {
+        "entryType": "TimelineTimelineItem",
+        "itemContent": {
+         "itemType": "TimelineTweet",
+         "tweet_results": {
+          "result": {
+           "__typename": "Tweet",
+           "rest_id": "1850000000000000001",
+           "core": {
+            "user_results": {
+             "result": {
+              "__typename": "User",
+              "rest_id": "9001",
+              "core": {
+               "screen_name": "nasa"
+              },
+              "legacy": {
+               "screen_name": "nasa"
+              }
+             }
+            }
+           },
+           "legacy": {
+            "id_str": "1850000000000000001",
+            "full_text": "...",
+            "extended_entities": {
+             "media": [
+              {
+               "id_str": "1850000000000000100",
+               "media_key": "7_1850000000000000100",
+               "type": "video",
+               "media_url_https": "https://pbs.twimg.com/ext_tw_video_thumb/1850000000000000100/pu/img/thumb.jpg",
+               "expanded_url": "https://x.com/nasa/status/1850000000000000001/video/1",
+               "video_info": {
+                "aspect_ratio": [
+                 9,
+                 16
+                ],
+                "duration_millis": 15000,
+                "variants": [
+                 {
+                  "content_type": "application/x-mpegURL",
+                  "url": "https://video.twimg.com/ext_tw_video/1850000000000000100/pu/pl/playlist.m3u8?tag=12"
+                 },
+                 {
+                  "bitrate": 632000,
+                  "content_type": "video/mp4",
+                  "url": "https://video.twimg.com/ext_tw_video/1850000000000000100/pu/vid/avc1/320x568/a.mp4?tag=12"
+                 },
+                 {
+                  "bitrate": 2176000,
+                  "content_type": "video/mp4",
+                  "url": "https://video.twimg.com/ext_tw_video/1850000000000000100/pu/vid/avc1/720x1280/c.mp4?tag=12"
+                 },
+                 {
+                  "bitrate": 950000,
+                  "content_type": "video/mp4",
+                  "url": "https://video.twimg.com/ext_tw_video/1850000000000000100/pu/vid/avc1/480x852/b.mp4?tag=12"
+                 },
+                 {
+                  "bitrate": 100,
+                  "content_type": "video/mp4",
+                  "url": "https://evil.com/vid/avc1/1080x1920/x.mp4"
+                 },
+                 {
+                  "bitrate": 100,
+                  "content_type": "video/mp4",
+                  "url": "http://video.twimg.com/vid/avc1/1080x1920/insecure.mp4"
+                 }
+                ]
+               }
+              },
+              {
+               "id_str": "1850000000000000200",
+               "type": "photo",
+               "media_url_https": "https://pbs.twimg.com/media/photo.jpg",
+               "expanded_url": "https://x.com/nasa/status/1850000000000000001/photo/1"
+              }
+             ]
+            }
+           }
+          }
+         }
+        }
+       }
+      },
+      {
+       "entryId": "tweet-1850000000000000002",
+       "content": {
+        "entryType": "TimelineTimelineItem",
+        "itemContent": {
+         "itemType": "TimelineTweet",
+         "tweet_results": {
+          "result": {
+           "__typename": "Tweet",
+           "rest_id": "1850000000000000002",
+           "core": {
+            "user_results": {
+             "result": {
+              "__typename": "User",
+              "rest_id": "9002",
+              "core": {
+               "screen_name": "fan"
+              },
+              "legacy": {
+               "screen_name": "fan"
+              }
+             }
+            }
+           },
+           "legacy": {
+            "id_str": "1850000000000000002",
+            "full_text": "...",
+            "quoted_status_id_str": "1850000000000000001"
+           },
+           "quoted_status_result": {
+            "result": {
+             "__typename": "Tweet",
+             "rest_id": "1850000000000000001",
+             "core": {
+              "user_results": {
+               "result": {
+                "__typename": "User",
+                "rest_id": "9001",
+                "core": {
+                 "screen_name": "nasa"
+                },
+                "legacy": {
+                 "screen_name": "nasa"
+                }
+               }
+              }
+             },
+             "legacy": {
+              "id_str": "1850000000000000001",
+              "full_text": "...",
+              "extended_entities": {
+               "media": [
+                {
+                 "id_str": "1850000000000000100",
+                 "media_key": "7_1850000000000000100",
+                 "type": "video",
+                 "media_url_https": "https://pbs.twimg.com/ext_tw_video_thumb/1850000000000000100/pu/img/thumb.jpg",
+                 "expanded_url": "https://x.com/nasa/status/1850000000000000001/video/1",
+                 "video_info": {
+                  "aspect_ratio": [
+                   9,
+                   16
+                  ],
+                  "duration_millis": 15000,
+                  "variants": [
+                   {
+                    "content_type": "application/x-mpegURL",
+                    "url": "https://video.twimg.com/ext_tw_video/1850000000000000100/pu/pl/playlist.m3u8?tag=12"
+                   },
+                   {
+                    "bitrate": 632000,
+                    "content_type": "video/mp4",
+                    "url": "https://video.twimg.com/ext_tw_video/1850000000000000100/pu/vid/avc1/320x568/a.mp4?tag=12"
+                   },
+                   {
+                    "bitrate": 2176000,
+                    "content_type": "video/mp4",
+                    "url": "https://video.twimg.com/ext_tw_video/1850000000000000100/pu/vid/avc1/720x1280/c.mp4?tag=12"
+                   },
+                   {
+                    "bitrate": 950000,
+                    "content_type": "video/mp4",
+                    "url": "https://video.twimg.com/ext_tw_video/1850000000000000100/pu/vid/avc1/480x852/b.mp4?tag=12"
+                   },
+                   {
+                    "bitrate": 100,
+                    "content_type": "video/mp4",
+                    "url": "https://evil.com/vid/avc1/1080x1920/x.mp4"
+                   },
+                   {
+                    "bitrate": 100,
+                    "content_type": "video/mp4",
+                    "url": "http://video.twimg.com/vid/avc1/1080x1920/insecure.mp4"
+                   }
+                  ]
+                 }
+                },
+                {
+                 "id_str": "1850000000000000200",
+                 "type": "photo",
+                 "media_url_https": "https://pbs.twimg.com/media/photo.jpg",
+                 "expanded_url": "https://x.com/nasa/status/1850000000000000001/photo/1"
+                }
+               ]
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      },
+      {
+       "entryId": "tweet-1850000000000000003",
+       "content": {
+        "entryType": "TimelineTimelineItem",
+        "itemContent": {
+         "itemType": "TimelineTweet",
+         "tweet_results": {
+          "result": {
+           "__typename": "Tweet",
+           "rest_id": "1850000000000000003",
+           "core": {
+            "user_results": {
+             "result": {
+              "__typename": "User",
+              "rest_id": "9003",
+              "core": {
+               "screen_name": "retweeter"
+              },
+              "legacy": {
+               "screen_name": "retweeter"
+              }
+             }
+            }
+           },
+           "legacy": {
+            "id_str": "1850000000000000003",
+            "full_text": "...",
+            "retweeted_status_result": {
+             "result": {
+              "__typename": "TweetWithVisibilityResults",
+              "tweet": {
+               "__typename": "Tweet",
+               "rest_id": "1850000000000000004",
+               "core": {
+                "user_results": {
+                 "result": {
+                  "__typename": "User",
+                  "rest_id": "9004",
+                  "core": {
+                   "screen_name": "gifs"
+                  },
+                  "legacy": {
+                   "screen_name": "gifs"
+                  }
+                 }
+                }
+               },
+               "legacy": {
+                "id_str": "1850000000000000004",
+                "full_text": "...",
+                "extended_entities": {
+                 "media": [
+                  {
+                   "id_str": "1850000000000000400",
+                   "type": "animated_gif",
+                   "media_url_https": "https://pbs.twimg.com/tweet_video_thumb/gif.jpg",
+                   "expanded_url": "https://x.com/gifs/status/1850000000000000004/photo/1",
+                   "video_info": {
+                    "aspect_ratio": [
+                     1,
+                     1
+                    ],
+                    "variants": [
+                     {
+                      "bitrate": 0,
+                      "content_type": "video/mp4",
+                      "url": "https://video.twimg.com/tweet_video/gif.mp4"
+                     }
+                    ]
+                   }
+                  }
+                 ]
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

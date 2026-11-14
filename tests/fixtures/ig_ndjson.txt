@@ -1,0 +1,2 @@
+{"data": {"xdt_api__v1__clips__home__connection_v2": {"edges": [{"node": {"media": {"code": "ReelOne_001", "pk": "21", "user": {"username": "reeler"}, "video_versions": [{"width": 720, "height": 1280, "url": "https://scontent.cdninstagram.com/reel1.mp4?a=1"}]}}}]}}}
+{"label": "deferred", "data": {"node": {"code": "ReelTwo_002", "pk": "22", "user": {"username": "reeler"}, "video_versions": [{"width": 540, "height": 960, "url": "https://scontent.cdninstagram.com/reel2.mp4?a=1"}]}}}

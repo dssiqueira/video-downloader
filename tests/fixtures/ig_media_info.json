@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "pk": "3456789012345678901",
+   "id": "3456789012345678901_123",
+   "code": "C1aBcDeFgHi",
+   "media_type": 2,
+   "video_duration": 12.5,
+   "user": {
+    "pk": "123",
+    "username": "natgeo"
+   },
+   "image_versions2": {
+    "candidates": [
+     {
+      "width": 720,
+      "height": 1280,
+      "url": "https://scontent-gru1-1.cdninstagram.com/v/t51/thumb.jpg?stp=1&oh=a"
+     }
+    ]
+   },
+   "video_versions": [
+    {
+     "type": 101,
+     "width": 720,
+     "height": 1280,
+     "url": "https://scontent-gru1-1.cdninstagram.com/o1/v/t16/f2/m86/AQ_720.mp4?efg=1&oh=2&oe=3"
+    },
+    {
+     "type": 102,
+     "width": 480,
+     "height": 854,
+     "url": "https://scontent-gru1-1.cdninstagram.com/o1/v/t16/f2/m86/AQ_480.mp4?efg=1&oh=2&oe=3"
+    },
+    {
+     "type": 103,
+     "width": 720,
+     "height": 1280,
+     "url": "https://scontent-gru1-1.cdninstagram.com/o1/v/t16/f2/m86/AQ_720.mp4?efg=9&oh=8"
+    },
+    {
+     "type": 104,
+     "width": 1080,
+     "height": 1920,
+     "url": "https://evil.example/AQ_1080.mp4"
+    }
+   ]
+  }
+ ],
+ "num_results": 1,
+ "status": "ok"
+}
