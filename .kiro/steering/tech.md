@@ -8,21 +8,25 @@
 
 ## Chrome Extension APIs Used
 
-- `chrome.runtime` — messaging between popup, content scripts, and service worker
-- `chrome.downloads` — trigger file downloads via `chrome.downloads.download()`
-- `chrome.tabs` — query active tab URL and ID
-- `chrome.storage` — reserved for future settings (not actively used)
-- `chrome.scripting` — inject content scripts programmatically
+- `chrome.runtime` — messaging between popup, content scripts and service worker
+- `chrome.downloads` — `chrome.downloads.download()` for the chosen variant
+- `chrome.storage.session` — per-tab video lists that survive service worker restarts
+- `chrome.action` — badge with the number of videos captured in the tab
+- `chrome.tabs` — active tab URL/ID in the popup; cleanup on tab close
+- Content scripts with `"world": "MAIN"` (Chrome 111+) for the network hook
 
-## External APIs (fetched at runtime, no SDK)
+## External Services
 
-- `cdn.syndication.twimg.com` — Twitter syndication API (no auth required), primary source for tweet video variants
-- `api.fxtwitter.com` — fallback when syndication API fails
-- Instagram GraphQL / REST API responses are intercepted passively (no direct calls initiated by the extension)
+None. The extension only reads API responses the page itself received; the
+service worker's only requests are `HEAD` (file size) and downloads to the
+platforms' video CDNs.
 
 ## No Build System
 
 There is no build step, no `package.json`, no `node_modules`. Files are loaded directly by Chrome.
+
+- **Unit tests**: `node --test tests/*.test.js` (Node's built-in runner, no install)
+- **End-to-end**: `python tests/e2e/run_e2e.py` (Playwright + Chromium; fake x.com/instagram.com pages, no login needed)
 
 - **To install**: Load the project folder via `chrome://extensions` → "Load unpacked"
 - **To test changes**: Edit files → click the refresh icon on `chrome://extensions` → reload the target page

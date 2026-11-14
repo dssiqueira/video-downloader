@@ -1,261 +1,178 @@
-// background.js - Service Worker for Video Downloader
+// background.js — service worker.
+//
+// Keeps the videos captured in each tab, answers the popup and the in-page
+// download buttons, and performs downloads (only from the platforms' CDNs).
+// The list lives in memory and in chrome.storage.session, so it survives the
+// service worker being stopped while the tab stays open.
+
 "use strict";
 
-// tabId → [{ url, quality, type, platform, bitrate, fileSize }]
-const videoCache = new Map();
+importScripts("../lib/extract.js");
+const VDL = self.VDLExtract;
 
-// ─── Download helpers ────────────────────────────────────────────────────────
+const MAX_VIDEOS_PER_TAB = 300;
+const SIZE_TIMEOUT_MS = 5000;
 
-function ensureMp4(filename) {
-  if (!filename) return "video_downloader.mp4";
-  return filename.replace(/\.[^/.]+$/, "") + ".mp4";
-}
+// ─── Per-tab store ─────────────────────────────────────────────────────────────
 
-// Only download over HTTPS from the platforms' own video CDNs.
-const ALLOWED_VIDEO_HOSTS = ["twimg.com", "cdninstagram.com", "fbcdn.net"];
+const memory = new Map(); // tabId → Map(key → video)
+const queues = new Map(); // tabId → Promise (serializes updates per tab)
 
-function isAllowedVideoUrl(url) {
+const storageKey = (tabId) => `tab:${tabId}`;
+
+async function load(tabId) {
+  if (memory.has(tabId)) return memory.get(tabId);
+  let saved = {};
   try {
-    const { protocol, hostname } = new URL(url);
-    return (
-      protocol === "https:" &&
-      ALLOWED_VIDEO_HOSTS.some((h) => hostname === h || hostname.endsWith(`.${h}`))
-    );
-  } catch {
-    return false;
-  }
+    saved = (await chrome.storage.session.get(storageKey(tabId)))[storageKey(tabId)] || {};
+  } catch (_) {}
+  const map = new Map(Object.entries(saved));
+  memory.set(tabId, map);
+  return map;
 }
 
-function downloadDirect(url, filename, sendResponse) {
-  if (!isAllowedVideoUrl(url)) {
-    sendResponse({ success: false, error: "URL de vídeo não permitida." });
-    return;
-  }
-  chrome.downloads.download(
-    { url, filename: ensureMp4(filename), saveAs: false, conflictAction: "uniquify" },
-    (downloadId) => {
-      if (chrome.runtime.lastError) {
-        sendResponse({ success: false, error: chrome.runtime.lastError.message });
-      } else {
-        sendResponse({ success: true, downloadId });
-      }
-    }
-  );
+function persist(tabId, map) {
+  chrome.storage.session.set({ [storageKey(tabId)]: Object.fromEntries(map) }).catch(() => {});
+  const count = map.size;
+  chrome.action.setBadgeText({ tabId, text: count ? String(Math.min(count, 99)) : "" }).catch(() => {});
 }
 
-// ─── Twitter / X.com API fetching ────────────────────────────────────────────
-
-async function fetchTweetVideos(tweetId) {
-  let username = null;
-  let videos   = [];
-
-  // Try syndication API first (no auth required)
-  try {
-    const url = `https://cdn.syndication.twimg.com/tweet-result?id=${tweetId}&lang=pt&features=tfw_timeline_list%3A%3Btfw_follower_count_sunset%3Atrue&token=x`;
-    const response = await fetch(url, {
-      headers: {
-        Origin:       "https://platform.twitter.com",
-        Referer:      "https://platform.twitter.com/",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        Accept:       "application/json",
-      },
-    });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
-    videos   = extractVideosFromSyndication(data);
-    username = data?.user?.screen_name
-      || data?.core?.user_results?.result?.legacy?.screen_name
-      || null;
-  } catch (e) {
-    console.warn("[VDL] Syndication API failed:", e.message);
-  }
-
-  // Fallback: fxtwitter
-  if (!videos.length) {
-    try {
-      const url      = `https://api.fxtwitter.com/status/${tweetId}`;
-      const response = await fetch(url, { headers: { "User-Agent": "VideoDownloader/2.0" } });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      videos   = extractVideosFromFxTwitter(data);
-      username = username || data?.tweet?.author?.screen_name || null;
-    } catch (e) {
-      console.warn("[VDL] fxtwitter failed:", e.message);
-    }
-  }
-
-  if (!videos.length) return { videos: [], username };
-
-  // Fetch file sizes in parallel
-  await Promise.all(videos.map(async (video) => {
-    try {
-      const head = await fetch(video.url, { method: "HEAD" });
-      const cl   = head.headers.get("content-length");
-      video.fileSize = cl ? parseInt(cl, 10) : null;
-    } catch (_) {
-      video.fileSize = null;
-    }
-  }));
-
-  return { videos, username };
+function withTab(tabId, fn) {
+  const run = (queues.get(tabId) || Promise.resolve()).then(fn, fn);
+  queues.set(tabId, run.catch(() => {}));
+  return run;
 }
 
-function extractVideosFromSyndication(data) {
-  const videos = [];
-
-  function recurse(obj) {
-    if (!obj || typeof obj !== "object") return;
-    if (Array.isArray(obj.variants)) {
-      obj.variants.forEach((v) => {
-        if ((v.type === "video/mp4" || v.content_type === "video/mp4") && (v.src || v.url)) {
-          const videoUrl = v.src || v.url;
-          videos.push({
-            url:     videoUrl,
-            quality: resolveQuality(videoUrl, v.bitrate),
-            bitrate: v.bitrate || null,
-            type:    "mp4",
-            platform: "twitter",
-          });
-        }
-      });
-    }
-    if (obj.video_info?.variants) {
-      obj.video_info.variants.forEach((v) => {
-        if (v.content_type === "video/mp4" && v.url) {
-          videos.push({
-            url:     v.url,
-            quality: resolveQuality(v.url, v.bitrate),
-            bitrate: v.bitrate || null,
-            type:    "mp4",
-            platform: "twitter",
-          });
-        }
-      });
-    }
-    for (const key of Object.keys(obj)) {
-      if (typeof obj[key] === "object") recurse(obj[key]);
-    }
-  }
-
-  recurse(data);
-  return deduplicateVideos(videos);
+function listOf(map) {
+  return [...map.values()].sort((a, b) => b.capturedAt - a.capturedAt);
 }
 
-function extractVideosFromFxTwitter(data) {
-  const videos = [];
-  const media  = data?.tweet?.media;
-  if (!media) return videos;
-
-  if (Array.isArray(media.videos)) {
-    media.videos.forEach((v) => {
-      if (Array.isArray(v.variants)) {
-        v.variants.forEach((variant) => {
-          if (variant.content_type === "video/mp4" && variant.url) {
-            videos.push({
-              url:     variant.url,
-              quality: resolveQuality(variant.url, variant.bitrate),
-              bitrate: variant.bitrate || null,
-              type:    "mp4",
-              platform: "twitter",
-            });
-          }
-        });
-      }
-    });
-  }
-
-  return deduplicateVideos(videos);
-}
-
-function resolveQuality(url, bitrate) {
-  const m = url.match(/\/(\d{3,5})x(\d{3,5})\//);
-  if (m) {
-    const h = Math.min(parseInt(m[1], 10), parseInt(m[2], 10));
-    if (h >= 2160) return "2160p (4K)";
-    if (h >= 1440) return "1440p (2K)";
-    if (h >= 1080) return "1080p";
-    if (h >= 720)  return "720p";
-    if (h >= 480)  return "480p";
-    if (h >= 360)  return "360p";
-    return `${h}p`;
-  }
-  if (bitrate) {
-    if (bitrate >= 8000000) return "1080p";
-    if (bitrate >= 5000000) return "720p";
-    if (bitrate >= 800000)  return "480p";
-    if (bitrate >= 300000)  return "360p";
-    return "270p";
-  }
-  return "MP4";
-}
-
-function deduplicateVideos(videos) {
-  const seenUrls  = new Set();
-  const unique    = videos.filter((v) => {
-    if (seenUrls.has(v.url)) return false;
-    seenUrls.add(v.url);
-    return true;
+function addVideos(tabId, videos) {
+  return withTab(tabId, async () => {
+    const map = await load(tabId);
+    const now = Date.now();
+    for (const raw of videos.slice(0, 200)) {
+      const video = VDL.sanitizeVideo(raw);
+      if (!video) continue;
+      const prev = map.get(video.key);
+      map.delete(video.key); // re-insert to keep insertion order = recency
+      map.set(video.key, { ...(prev ? VDL.mergeVideo(prev, video) : video), capturedAt: now });
+    }
+    while (map.size > MAX_VIDEOS_PER_TAB) map.delete(map.keys().next().value);
+    persist(tabId, map);
+    return map.size;
   });
-  const byQuality = new Map();
-  unique.forEach((v) => {
-    const existing = byQuality.get(v.quality);
-    if (!existing || (v.bitrate || 0) > (existing.bitrate || 0)) {
-      byQuality.set(v.quality, v);
-    }
-  });
-  return Array.from(byQuality.values());
 }
 
-// ─── Message listener ────────────────────────────────────────────────────────
-
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-
-  if (message.type === "VIDEO_FOUND") {
-    const tabId = sender.tab?.id;
-    if (!tabId) return;
-    if (!videoCache.has(tabId)) videoCache.set(tabId, []);
-    const existing = videoCache.get(tabId);
-    if (!existing.some((v) => v.url === message.video.url)) {
-      existing.push(message.video);
-    }
-    sendResponse({ success: true });
-    return true;
-  }
-
-  if (message.type === "GET_VIDEOS") {
-    sendResponse({ videos: videoCache.get(message.tabId) || [] });
-    return true;
-  }
-
-  if (message.type === "FETCH_TWEET_VIDEOS") {
-    fetchTweetVideos(message.tweetId)
-      .then(({ videos, username }) => sendResponse({ success: true, videos, username }))
-      .catch((err) => sendResponse({ success: false, error: err.message }));
-    return true;
-  }
-
-  if (message.type === "CLEAR_VIDEOS") {
-    videoCache.delete(message.tabId);
-    sendResponse({ success: true });
-    return true;
-  }
-
-  if (message.type === "DOWNLOAD_VIDEO") {
-    downloadDirect(message.url, message.filename, sendResponse);
-    return true;
-  }
-
-  return true;
-});
-
-// ─── Tab lifecycle ────────────────────────────────────────────────────────────
+function clearTab(tabId) {
+  return withTab(tabId, async () => {
+    memory.set(tabId, new Map());
+    await chrome.storage.session.remove(storageKey(tabId)).catch(() => {});
+    chrome.action.setBadgeText({ tabId, text: "" }).catch(() => {});
+  });
+}
 
 chrome.tabs.onRemoved.addListener((tabId) => {
-  videoCache.delete(tabId);
+  memory.delete(tabId);
+  queues.delete(tabId);
+  chrome.storage.session.remove(storageKey(tabId)).catch(() => {});
 });
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (changeInfo.status === "loading" && changeInfo.url) {
-    videoCache.delete(tabId);
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.action.setBadgeBackgroundColor({ color: "#1d9bf0" }).catch(() => {});
+});
+
+// ─── Downloads ─────────────────────────────────────────────────────────────────
+
+function safeFilename(name) {
+  const base = String(name || "video").replace(/\.mp4$/i, "").replace(/[^A-Za-z0-9_-]+/g, "_").slice(0, 120);
+  return `${base || "video"}.mp4`;
+}
+
+async function download(url, filename) {
+  if (!VDL.isAllowedVideoUrl(url)) throw new Error("URL de vídeo não permitida.");
+  return chrome.downloads.download({ url, filename: safeFilename(filename), conflictAction: "uniquify" });
+}
+
+const sizes = new Map(); // url without query → bytes | null
+
+async function fileSize(url) {
+  if (!VDL.isAllowedVideoUrl(url)) return null;
+  const key = url.split("?")[0];
+  if (sizes.has(key)) return sizes.get(key);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SIZE_TIMEOUT_MS);
+  let size = null;
+  try {
+    const res = await fetch(url, { method: "HEAD", signal: controller.signal, credentials: "omit" });
+    const len = Number(res.headers.get("content-length"));
+    if (res.ok && len > 0) size = len;
+  } catch (_) {
+  } finally {
+    clearTimeout(timer);
   }
+  sizes.set(key, size);
+  return size;
+}
+
+// ─── Messages ──────────────────────────────────────────────────────────────────
+
+const EXTENSION_ORIGIN = chrome.runtime.getURL("");
+
+/**
+ * Tab the message is about. Extension pages (the popup, even when opened in a
+ * tab) name it explicitly; content scripts can only ever act on their own tab
+ * (their sender.url is the site's URL, so they cannot pass as extension pages).
+ */
+function tabFor(message, sender) {
+  const fromExtensionPage = sender.id === chrome.runtime.id && String(sender.url || "").startsWith(EXTENSION_ORIGIN);
+  if (fromExtensionPage) return Number.isInteger(message.tabId) ? message.tabId : null;
+  return sender.tab ? sender.tab.id : null;
+}
+
+async function handle(message, sender) {
+  const tabId = tabFor(message, sender);
+
+  switch (message?.type) {
+    case "VDL_PAGE_START":
+      if (sender.tab) await clearTab(tabId);
+      return { ok: true };
+
+    case "VDL_FOUND":
+      if (!sender.tab || !Array.isArray(message.videos)) return { ok: false };
+      return { ok: true, count: await addVideos(tabId, message.videos) };
+
+    case "VDL_GET":
+      if (tabId == null) return { ok: false, videos: [] };
+      return { ok: true, videos: listOf(await load(tabId)) };
+
+    case "VDL_GET_FOR_POST": {
+      if (tabId == null) return { ok: false, videos: [] };
+      const list = listOf(await load(tabId));
+      return { ok: true, videos: VDL.videosForPost(list, message.platform, message.postIds) };
+    }
+
+    case "VDL_CLEAR":
+      if (tabId != null) await clearTab(tabId);
+      return { ok: true };
+
+    case "VDL_SIZE":
+      return { ok: true, size: await fileSize(message.url) };
+
+    case "VDL_DOWNLOAD":
+      try {
+        const downloadId = await download(message.url, message.filename);
+        return { ok: true, downloadId };
+      } catch (e) {
+        return { ok: false, error: e.message };
+      }
+
+    default:
+      return { ok: false, error: "unknown message" };
+  }
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  handle(message, sender).then(sendResponse, (e) => sendResponse({ ok: false, error: String(e?.message || e) }));
+  return true;
 });

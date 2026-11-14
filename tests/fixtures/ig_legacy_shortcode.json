@@ -1,0 +1,21 @@
+{
+ "graphql": {
+  "shortcode_media": {
+   "__typename": "GraphVideo",
+   "shortcode": "B0LdLegacy1",
+   "is_video": true,
+   "video_url": "https://instagram.fgru5-1.fna.fbcdn.net/v/t50.2886-16/legacy.mp4?_nc_ht=x&oh=1",
+   "dimensions": {
+    "width": 640,
+    "height": 800
+   },
+   "display_url": "https://instagram.fgru5-1.fna.fbcdn.net/v/t51/legacy.jpg",
+   "owner": {
+    "username": "old"
+   },
+   "edge_sidecar_to_children": {
+    "edges": []
+   }
+  }
+ }
+}

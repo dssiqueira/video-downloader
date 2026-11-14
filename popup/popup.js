@@ -1,286 +1,220 @@
-// popup.js - Video Downloader
+// popup.js — lists the videos captured in the active tab and downloads them.
+"use strict";
 
-const tweetUrlInput    = document.getElementById("tweet-url");
-const btnFetch         = document.getElementById("btn-fetch");
-const btnRefresh       = document.getElementById("btn-refresh");
-const btnClear         = document.getElementById("btn-clear");
-const statusEl         = document.getElementById("status");
-const videoListEl      = document.getElementById("video-list");
-const qualityListEl    = document.getElementById("quality-list");
-const pageVideoSection = document.getElementById("page-videos-section");
-const pageVideoList    = document.getElementById("page-video-list");
-const emptyState       = document.getElementById("empty-state");
-const emptyHint        = document.getElementById("empty-hint");
-const platformBadge    = document.getElementById("platform-badge");
-const urlSection       = document.getElementById("url-section");
-
-// ─── Platform metadata ────────────────────────────────────────────────────────
+const VDL = globalThis.VDLExtract;
 
 const PLATFORMS = {
-  twitter:   { label: "X / Twitter", icon: "../icons/apps/twitter.png" },
-  instagram: { label: "Instagram",   icon: "../icons/apps/social.png"  },
+  twitter: { label: "X / Twitter", icon: "../icons/apps/twitter.png" },
+  instagram: { label: "Instagram", icon: "../icons/apps/social.png" },
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+const MAX_OTHERS = 50;
+const SIZE_LOOKUPS = 12;
 
-function showStatus(message, type = "info") {
-  statusEl.textContent = message;
-  statusEl.className = `status ${type}`;
-  statusEl.classList.remove("hidden");
-}
+const $ = (id) => document.getElementById(id);
+const els = {
+  badge: $("platform-badge"),
+  status: $("status"),
+  currentSection: $("current-section"),
+  currentList: $("current-list"),
+  othersSection: $("others-section"),
+  othersTitle: $("others-title"),
+  othersList: $("others-list"),
+  empty: $("empty-state"),
+  emptyHint: $("empty-hint"),
+};
 
-function hideStatus() {
-  statusEl.classList.add("hidden");
-}
+let tab = null;
 
-function setLoading(loading) {
-  btnFetch.disabled = loading;
-  btnFetch.textContent = loading ? "Buscando..." : "Buscar";
-}
+// ─── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatBitrate(bitrate) {
-  if (!bitrate) return "";
-  return `${Math.round(bitrate / 1000)} kbps`;
-}
-
-function formatFileSize(bytes) {
-  if (!bytes || bytes <= 0) return null;
-  if (bytes >= 1073741824) return `${(bytes / 1073741824).toFixed(2)} GB`;
-  if (bytes >= 1048576)    return `${(bytes / 1048576).toFixed(1)} MB`;
-  if (bytes >= 1024)       return `${(bytes / 1024).toFixed(0)} KB`;
-  return `${bytes} B`;
-}
-
-function buildFilename(platform, username, quality) {
-  const safeQuality = (quality || "video")
-    .replace(/[^a-zA-Z0-9]/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_|_$/g, "") || "video";
-  const user = username ? `${username}_` : "";
-  const pfx  = (platform || "video").replace(/[^a-zA-Z0-9]/g, "_");
-  return `${pfx}_${user}${safeQuality}.mp4`;
-}
-
-function extractTweetId(url) {
-  const m = url.match(/status\/(\d+)/);
-  return m ? m[1] : null;
-}
-
-function extractUsernameFromUrl(url) {
-  const m = url.match(/(?:x\.com|twitter\.com)\/([^/]+)\/status\//);
-  return m ? m[1] : null;
-}
-
-function detectPlatformFromUrl(url) {
-  if (!url) return null;
-  if (url.includes("x.com") || url.includes("twitter.com")) return "twitter";
-  if (url.includes("instagram.com")) return "instagram";
-  return null;
-}
-
-// ─── Render video list ────────────────────────────────────────────────────────
-
-function renderVideoList(videos, container, username = null) {
-  container.innerHTML = "";
-
-  if (!videos || videos.length === 0) {
-    container.innerHTML = '<li class="empty-item">Nenhum vídeo encontrado.</li>';
-    return;
-  }
-
-  const sorted = [...videos].sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-
-  sorted.forEach((video, index) => {
-    const li           = document.createElement("li");
-    li.className       = "quality-item";
-
-    const qualityLabel = video.quality || `Opção ${index + 1}`;
-    const bitrateLabel = video.bitrate ? formatBitrate(video.bitrate) : "";
-    const sizeLabel    = formatFileSize(video.fileSize);
-    const isHighest    = index === 0;
-    const filename     = buildFilename(video.platform, username, qualityLabel);
-    const platformInfo = PLATFORMS[video.platform];
-    const platformIcon = platformInfo
-      ? `<img src="${platformInfo.icon}" alt="${platformInfo.label}" class="platform-icon-sm">`
-      : "";
-
-    const metaParts = [bitrateLabel, sizeLabel].filter(Boolean);
-    const metaLine  = metaParts.join(" · ");
-
-    // Static markup only; values that come from the page/API are set as text
-    // or dataset below, never interpolated into HTML.
-    li.innerHTML = `
-      <div class="quality-info">
-        <div class="quality-top">
-          ${platformIcon}
-          <span class="quality-badge"></span>
-        </div>
-        <span class="quality-meta"></span>
-      </div>
-      <button class="btn-download">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
-          <path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 4h14v-2H5v2z"/>
-        </svg>
-        Baixar
-      </button>
-    `;
-
-    li.querySelector(".quality-badge").textContent = `${qualityLabel}${isHighest ? " ⭐" : ""}`;
-    const meta = li.querySelector(".quality-meta");
-    if (metaLine) meta.textContent = metaLine;
-    else meta.remove();
-
-    const btn = li.querySelector(".btn-download");
-    btn.dataset.url      = video.url;
-    btn.dataset.filename = filename;
-    btn.setAttribute("aria-label", `Baixar ${qualityLabel}`);
-
-    container.appendChild(li);
-  });
-
-  container.querySelectorAll(".btn-download").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      downloadVideo(btn.dataset.url, btn.dataset.filename, btn);
+function send(message) {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage(message, (response) => {
+      void chrome.runtime.lastError;
+      resolve(response || {});
     });
   });
 }
 
-// ─── Download ─────────────────────────────────────────────────────────────────
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text != null) node.textContent = text;
+  return node;
+}
 
-function downloadVideo(url, filename, btn) {
-  const originalHTML = btn.innerHTML;
+function formatBytes(bytes) {
+  if (!bytes) return "";
+  const mb = bytes / (1024 * 1024);
+  return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+function formatDuration(ms) {
+  if (!ms) return "";
+  const s = Math.round(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+function setStatus(text, kind = "info") {
+  els.status.textContent = text;
+  els.status.className = `status ${kind}`;
+  els.status.classList.toggle("hidden", !text);
+}
+
+async function getTab() {
+  const param = Number(new URLSearchParams(location.search).get("tab"));
+  if (Number.isInteger(param) && param > 0) return chrome.tabs.get(param);
+  const [active] = await chrome.tabs.query({ active: true, currentWindow: true });
+  return active || null;
+}
+
+// ─── Rendering ─────────────────────────────────────────────────────────────────
+
+const sizeQueue = [];
+
+function variantRow(video, variant) {
+  const li = el("li", "quality-item");
+  const info = el("div", "quality-info");
+  info.appendChild(el("span", "quality-badge", variant.quality));
+  const meta = el("span", "quality-meta");
+  const parts = [];
+  if (variant.width && variant.height) parts.push(`${variant.width}×${variant.height}`);
+  if (variant.bitrate) parts.push(`${Math.round(variant.bitrate / 1000)} kbps`);
+  meta.textContent = parts.join(" · ");
+  info.appendChild(meta);
+  sizeQueue.push({ url: variant.url, meta, parts });
+
+  const btn = el("button", "btn-download");
+  btn.type = "button";
+  btn.setAttribute("aria-label", `Baixar ${variant.quality}`);
+  btn.insertAdjacentHTML(
+    "afterbegin",
+    '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 4h14v-2H5v2z"/></svg>'
+  );
+  btn.appendChild(document.createTextNode("Baixar"));
+  btn.addEventListener("click", () => downloadVariant(video, variant, btn));
+
+  li.append(info, btn);
+  return li;
+}
+
+function videoCard(video) {
+  const card = el("li", "video-card");
+  const head = el("div", "video-head");
+
+  if (video.thumbnail) {
+    const img = el("img", "thumb");
+    img.alt = "";
+    img.loading = "lazy";
+    img.referrerPolicy = "no-referrer";
+    img.src = video.thumbnail;
+    img.addEventListener("error", () => img.remove());
+    head.appendChild(img);
+  }
+
+  const title = el("div", "video-title");
+  const platform = PLATFORMS[video.platform];
+  if (platform) {
+    const icon = el("img", "platform-icon-sm");
+    icon.src = platform.icon;
+    icon.alt = platform.label;
+    title.appendChild(icon);
+  }
+  title.appendChild(el("span", "author", video.username ? `@${video.username}` : platform?.label || "Vídeo"));
+  const details = [formatDuration(video.durationMs), video.postId ? `post ${video.postId}` : ""].filter(Boolean);
+  if (details.length) title.appendChild(el("span", "video-sub", details.join(" · ")));
+  head.appendChild(title);
+
+  const list = el("ul", "quality-list nested");
+  for (const variant of video.variants) list.appendChild(variantRow(video, variant));
+
+  card.append(head, list);
+  return card;
+}
+
+async function loadSizes() {
+  const jobs = sizeQueue.splice(0, SIZE_LOOKUPS);
+  await Promise.all(
+    jobs.map(async ({ url, meta, parts }) => {
+      const { size } = await send({ type: "VDL_SIZE", url });
+      if (size) meta.textContent = [...parts, formatBytes(size)].join(" · ");
+    })
+  );
+}
+
+function showPlatform(platform) {
+  const info = PLATFORMS[platform];
+  els.badge.replaceChildren();
+  els.badge.classList.toggle("hidden", !info);
+  if (!info) return;
+  const icon = el("img", "badge-icon");
+  icon.src = info.icon;
+  icon.alt = "";
+  els.badge.append(icon, el("span", null, info.label));
+}
+
+function emptyHint(platform) {
+  if (!platform) return "Abra o X ou o Instagram e navegue até um vídeo.";
+  const where =
+    platform === "twitter"
+      ? "Role a timeline ou abra um tweet com vídeo."
+      : "Abra um post, reel ou story com vídeo.";
+  return `Nenhum vídeo capturado nesta aba ainda.\n${where}\nSe a aba já estava aberta antes de instalar ou atualizar a extensão, recarregue a página.`;
+}
+
+async function render() {
+  sizeQueue.length = 0;
+  setStatus("");
+  const page = tab?.url ? VDL.postFromUrl(tab.url) : null;
+  showPlatform(page?.platform);
+
+  const { videos = [] } = tab && page ? await send({ type: "VDL_GET", tabId: tab.id }) : {};
+  const current = page?.postId ? VDL.videosForPost(videos, page.platform, [page.postId]) : [];
+  const currentKeys = new Set(current.map((v) => v.key));
+  const others = videos.filter((v) => !currentKeys.has(v.key)).slice(0, MAX_OTHERS);
+
+  els.currentList.replaceChildren(...current.map(videoCard));
+  els.currentSection.classList.toggle("hidden", !current.length);
+
+  els.othersList.replaceChildren(...others.map(videoCard));
+  els.othersTitle.textContent = current.length ? "Outros vídeos nesta aba" : "Vídeos nesta aba";
+  els.othersSection.classList.toggle("hidden", !others.length);
+
+  const nothing = !current.length && !others.length;
+  els.emptyHint.textContent = emptyHint(page?.platform);
+  els.empty.classList.toggle("hidden", !nothing);
+
+  if (page?.postId && !current.length && others.length) {
+    setStatus("O vídeo deste post ainda não foi capturado. Dê play nele ou recarregue a página.", "info");
+  }
+  loadSizes();
+}
+
+// ─── Actions ───────────────────────────────────────────────────────────────────
+
+async function downloadVariant(video, variant, btn) {
   btn.disabled = true;
-  btn.innerHTML = `
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
-      <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0020 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 004 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
-    </svg> Baixando...`;
-
-  chrome.runtime.sendMessage({ type: "DOWNLOAD_VIDEO", url, filename }, (response) => {
-    if (response?.success) {
-      btn.innerHTML = `✓ Iniciado`;
-      btn.style.background = "#00ba7c";
-      setTimeout(() => {
-        btn.innerHTML = originalHTML;
-        btn.style.background = "";
-        btn.disabled = false;
-      }, 2500);
-    } else {
-      showStatus("Erro ao baixar. Tente novamente.", "error");
-      btn.innerHTML = originalHTML;
-      btn.disabled = false;
-    }
-  });
-}
-
-// ─── Fetch videos from URL (Twitter / X only) ────────────────────────────────
-
-async function fetchVideosFromUrl(inputUrl) {
-  const tweetId = extractTweetId(inputUrl);
-  if (!tweetId) {
-    showStatus("URL inválida. Use: https://x.com/user/status/ID", "error");
-    return;
-  }
-
-  const urlUsername = extractUsernameFromUrl(inputUrl);
-
-  setLoading(true);
-  showStatus("Buscando vídeo...", "loading");
-  videoListEl.classList.add("hidden");
-  emptyState.classList.add("hidden");
-
-  chrome.runtime.sendMessage({ type: "FETCH_TWEET_VIDEOS", tweetId }, (response) => {
-    setLoading(false);
-
-    if (chrome.runtime.lastError) {
-      showStatus("Erro interno. Recarregue a página.", "error");
-      emptyState.classList.remove("hidden");
-      return;
-    }
-
-    if (!response?.success || !response.videos?.length) {
-      showStatus("Nenhum vídeo encontrado. O post pode não ter vídeo ou estar protegido.", "error");
-      emptyState.classList.remove("hidden");
-      return;
-    }
-
-    hideStatus();
-    renderVideoList(response.videos, qualityListEl, response.username || urlUsername);
-    videoListEl.classList.remove("hidden");
-  });
-}
-
-// ─── Load videos detected on current page ────────────────────────────────────
-
-async function loadPageVideos() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab) return;
-
-  const platform = detectPlatformFromUrl(tab.url || "");
-
-  // Platform badge
-  if (platform && PLATFORMS[platform]) {
-    const meta = PLATFORMS[platform];
-    platformBadge.innerHTML = `<img src="${meta.icon}" alt="${meta.label}" class="badge-icon"><span>${meta.label}</span>`;
-    platformBadge.classList.remove("hidden");
+  const r = await send({ type: "VDL_DOWNLOAD", url: variant.url, filename: VDL.buildFilename(video, variant) });
+  if (r.ok) {
+    setStatus(`Download iniciado: ${variant.quality}.`, "success");
   } else {
-    platformBadge.classList.add("hidden");
+    setStatus(r.error || "Não foi possível baixar este vídeo.", "error");
+    btn.disabled = false;
   }
-
-  // URL input only shown on X/Twitter
-  const isTwitter = platform === "twitter";
-  urlSection.classList.toggle("hidden", !isTwitter && !!platform);
-
-  if (isTwitter && tab.url?.includes("/status/")) {
-    tweetUrlInput.value = tab.url;
-  }
-
-  // Load cached page videos
-  chrome.runtime.sendMessage({ type: "GET_VIDEOS", tabId: tab.id }, (response) => {
-    const videos = response?.videos || [];
-    if (videos.length > 0) {
-      renderVideoList(videos, pageVideoList);
-      pageVideoSection.classList.remove("hidden");
-      emptyState.classList.add("hidden");
-    } else {
-      pageVideoSection.classList.add("hidden");
-      emptyState.classList.remove("hidden");
-      if (platform === "instagram") {
-        emptyHint.innerHTML = "Reproduza um vídeo no Instagram<br/>e clique em Atualizar";
-      } else if (!platform) {
-        emptyHint.innerHTML = "Navegue pelo X ou Instagram<br/>e reproduza um vídeo";
-      }
-    }
-  });
 }
 
-// ─── Event listeners ──────────────────────────────────────────────────────────
-
-btnFetch.addEventListener("click", () => {
-  const url = tweetUrlInput.value.trim();
-  if (!url) { showStatus("Cole a URL do post primeiro.", "error"); return; }
-  fetchVideosFromUrl(url);
+$("btn-refresh").addEventListener("click", render);
+$("btn-clear").addEventListener("click", async () => {
+  if (tab) await send({ type: "VDL_CLEAR", tabId: tab.id });
+  render();
 });
 
-tweetUrlInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") btnFetch.click();
-});
-
-btnRefresh.addEventListener("click", () => {
-  videoListEl.classList.add("hidden");
-  loadPageVideos();
-});
-
-btnClear.addEventListener("click", async () => {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab) return;
-  chrome.runtime.sendMessage({ type: "CLEAR_VIDEOS", tabId: tab.id }, () => {
-    pageVideoSection.classList.add("hidden");
-    emptyState.classList.remove("hidden");
-  });
-});
-
-// ─── Init ─────────────────────────────────────────────────────────────────────
-
-(async function init() {
-  await loadPageVideos();
+(async () => {
+  try {
+    tab = await getTab();
+  } catch (_) {
+    tab = null;
+  }
+  render();
 })();

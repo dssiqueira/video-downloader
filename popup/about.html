@@ -17,7 +17,7 @@
         </svg>
       </div>
       <h1 class="hero-title">Video Downloader</h1>
-      <p class="hero-sub">Versão 2.0.0 &nbsp;·&nbsp; Extensão para Chrome</p>
+      <p class="hero-sub">Versão 3.0.0 &nbsp;·&nbsp; Extensão para Chrome</p>
     </header>
 
     <!-- About -->
@@ -34,9 +34,10 @@
     <section class="section">
       <h2 class="section-title">Como funciona?</h2>
       <p>
-        A extensão intercepta as requisições de rede que o navegador já faz para carregar os vídeos
-        que você assiste. Quando uma URL de vídeo é detectada, ela fica disponível no popup para
-        download com um clique. Nenhum dado é enviado para servidores externos.
+        O X e o Instagram carregam os posts pelas próprias APIs, e essas respostas já trazem os
+        links dos vídeos em todas as qualidades. A extensão lê uma cópia dessas respostas enquanto
+        você navega e deixa os vídeos prontos no popup (e no botão de download de cada tweet).
+        Ela não faz requisições a serviços externos e nenhum dado sai do seu navegador.
       </p>
     </section>
 
@@ -55,7 +56,7 @@
           </div>
           <div class="platform-features">
             <span class="tag">Múltiplas qualidades</span>
-            <span class="tag">Busca por URL</span>
+            <span class="tag">Botão no tweet</span>
           </div>
         </li>
 
@@ -83,7 +84,7 @@
       <ol class="steps">
         <li>
           <span class="step-num">1</span>
-          <span>Navegue até um site suportado e reproduza o vídeo que deseja baixar.</span>
+          <span>Navegue pelo X ou pelo Instagram até o vídeo que deseja baixar (no X, também dá para usar o botão de download no próprio tweet).</span>
         </li>
         <li>
           <span class="step-num">2</span>
@@ -91,15 +92,11 @@
         </li>
         <li>
           <span class="step-num">3</span>
-          <span>Os vídeos detectados aparecerão automaticamente em <em>Vídeos detectados nesta página</em>.</span>
+          <span>O vídeo do post aberto aparece em <em>Este post</em>; os outros vídeos que a página carregou aparecem logo abaixo.</span>
         </li>
         <li>
           <span class="step-num">4</span>
           <span>Escolha a qualidade desejada e clique em <strong>Baixar</strong>.</span>
-        </li>
-        <li>
-          <span class="step-num">5</span>
-          <span>Para posts do X/Twitter, você também pode colar a URL do post e clicar em <strong>Buscar</strong>.</span>
         </li>
       </ol>
     </section>
@@ -108,15 +105,15 @@
     <section class="section">
       <h2 class="section-title">Limitações conhecidas</h2>
       <ul class="limitations">
-        <li>Vídeos em contas privadas ou com restrição de acesso não podem ser detectados.</li>
-        <li>A extensão só detecta vídeos que o navegador realmente carregou durante a sessão atual.</li>
+        <li>Só aparecem vídeos que a própria página carregou: se você não tem acesso ao post (conta privada, restrição de idade), a extensão também não tem.</li>
+        <li>A lista vale para a aba atual e recomeça quando a página é recarregada. Os links do Instagram expiram depois de algumas horas.</li>
         <li>YouTube, TikTok, Facebook, Reddit e Twitch não são suportados — cada um usa mecanismos de proteção que impedem o download sem APIs externas.</li>
       </ul>
     </section>
 
     <!-- Footer -->
     <footer class="footer">
-      <p>Video Downloader &copy; 2025 &nbsp;·&nbsp; Uso pessoal</p>
+      <p>Video Downloader &copy; 2025-2026 &nbsp;·&nbsp; Uso pessoal</p>
       <p class="footer-note">Baixe apenas conteúdo que você tem permissão para usar.</p>
     </footer>
 
